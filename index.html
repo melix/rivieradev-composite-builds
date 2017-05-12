@@ -1,1 +1,151 @@
-Initial
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="author" content="Cédric Champeau (@CedricChampeau), Gradle" /><title>Composite builds: death to snapshots!</title><meta content="yes" name="apple-mobile-web-app-capable" /><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style" /><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui" name="viewport" /><link href="reveal.js/css/reveal.css" rel="stylesheet" /><link rel="stylesheet" href="reveal.js/css/theme/beige.css" id="theme" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css" /><link href="reveal.js/lib/css/zenburn.css" rel="stylesheet" /><script>document.write( '<link rel="stylesheet" href="reveal.js/css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );</script><link rel="stylesheet" type="text/css" href="reveal.js/css/theme/asciinema-player.css" />
+<link rel="stylesheet" type="text/css" href="reveal.js/css/theme/github-gist.css" />
+<script src="reveal.js/css/theme/asciinema-player.js"></script></head><body><div class="reveal"><div class="slides"><section class="title" data-state="title"><h1>Composite builds</h1><h2>death to snapshots!</h2><p class="author"><small>Cédric Champeau (@CedricChampeau), Gradle</small></p></section><section id="who-am-i" data-background-image="./images/nantes.jpg" data-background-size="cover"><h2>Who am I</h2>
+<style>
+.asciinema-terminal.font-medium {
+  font-size: 16px;
+}
+</style>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">speaker {
+    name 'Cédric Champeau'
+    company 'Gradle Inc'
+    oss 'Apache Groovy committer',
+    successes 'Static type checker',
+              'Static compilation',
+              'Traits',
+              'Markup template engine',
+              'DSLs'
+        failures Stream.of(bugs),
+        twitter '@CedricChampeau',
+        github 'melix',
+        extraDescription '''Groovy in Action 2 co-author
+Misc OSS contribs (Gradle plugins, deck2pdf, jlangdetect, ...)'''
+}</code></pre></div></div></section>
+<section><section id="snapshots"><h2>Snapshots</h2></section><section id="once-upon-a-time"><h2>Once upon a time&#8230;&#8203;</h2><div class="ulist"><ul><li><p>Monolithic apps</p></li><li><p>CVS, Perforce, &#8230;&#8203;</p></li><li><p>Ant</p></li></ul></div></section><section id="modularization"><h2>Modularization</h2><div class="ulist"><ul><li><p>Dependency management</p><div class="ulist"><ul><li><p>Maven</p></li><li><p>Ivy</p></li></ul></div></li><li><p>Multi-project builds</p></li></ul></div></section></section>
+<section><section id="monorepo-vs-multirepo"><h2>Monorepo vs multirepo</h2></section><section id="monorepo-pros"><h2>Monorepo pros</h2><div class="ulist"><ul><li><p>All sources in single place</p></li><li><p>Single lifecycle (sometimes a con)</p></li><li><p>Easy refactorings</p></li><li><p>Catch breaking changes early</p></li></ul></div></section><section id="monorepo-cons"><h2>Monorepo cons</h2><div class="ulist"><ul><li><p>Build performance</p><div class="ulist"><ul><li><p>Configuration time for projects you don&#8217;t need</p></li><li><p>Build time for projects you don&#8217;t need</p></li></ul></div></li><li><p>IDE integration</p></li><li><p><code>TooMuchCodeException</code></p></li></ul></div></section><section id="multirepo-pros"><h2>Multirepo pros</h2><div class="ulist"><ul><li><p>Focused</p></li><li><p>Stronger encapsulation</p></li><li><p>Clean component boundaries</p></li><li><p>Independent lifecycle (sometimes a con)</p></li><li><p>Build performance</p></li></ul></div></section><section id="multirepo-cons"><h2>Multirepo cons</h2><div class="ulist"><ul><li><p>Requires integration</p><div class="ulist"><ul><li><p>Consumers need a way to get latest version</p></li><li><p>Always needs to be published</p></li></ul></div></li><li><p>Breakages caught late</p></li></ul></div></section><section id="so-here-come-snapshots"><h2>So here come snapshots!</h2><div class="ulist"><ul><li><p>Multi-repo approach</p></li><li><p>Allows consumer to consume <em>unreleased</em> versions</p></li><li><p>Problem solved!</p></li></ul></div>
+<div class="paragraph"><p>(is it?)</p></div></section></section>
+<section><section id="why-snapshots-are-evil"><h2>Why snapshots are evil</h2></section><section id="what-s-wrong-with-this"><h2>What&#8217;s wrong with this?</h2><div class="listingblock"><div class="content"><pre class="highlight"><code>dependencies {
+   implementation 'com.acme:awesome-lib:1+'
+}</code></pre></div></div></section><section id="or-this"><h2>Or this?</h2><div class="listingblock"><div class="content"><pre class="highlight"><code>mavenLocal() // evil!</code></pre></div></div></section><section id="or-this-2"><h2>Or this?</h2><div class="listingblock"><div class="content"><pre class="highlight"><code>dependencies {
+    // Everytime someone publishes a snapshot, a kitten dies
+    implementation 'com.acme:awesome-lib:1.2-SNAPSHOT'
+}</code></pre></div></div></section><section id="builds-should-be-reproducible"><h2>Builds should be reproducible</h2><div class="ulist"><ul><li><p>Anybody, anytime, should be able to:</p><div class="ulist"><ul><li><p>Produce the same output for the same input</p></li><li><p>Share the results in a repository-agnostic way (build cache)</p></li></ul></div></li><li><p>Snapshots are worse than dynamic versions</p><div class="ulist"><ul><li><p>Same version number, different artifacts</p></li></ul></div></li><li><p>No traceability</p><div class="ulist"><ul><li><p>At best, a timestamp if it&#8217;s published</p></li><li><p>At worse, no clue (<code>mavenLocal()</code>)</p></li></ul></div></li></ul></div></section><section id="snapshots-and-dynamic-versions-are-performance-killers"><h2>Snapshots and dynamic versions are performance killers</h2><div class="ulist"><ul><li><p>Periodically look into repositories</p></li><li><p>Cache policy (reproducible?)</p></li><li><p>Maven: a snapshot can change <em>during</em> a build</p><div class="ulist"><ul><li><p>No proper resolution of sub-module artifacts (identified by <em>version</em>)</p></li><li><p>Cache timeout</p></li></ul></div></li></ul></div></section><section id="maven-vs-gradle"><h2>Maven vs Gradle</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="xml language-xml">&lt;dependencies&gt;
+   &lt;dependency&gt;
+       &lt;groupId&gt;com.acme&lt;/groupId&gt;
+       &lt;artifactId&gt;awesome-lib&lt;/groupId&gt;
+       &lt;version&gt;1.2-SNAPSHOT&lt;/version&gt;
+   &lt;/dependency&gt;
+&lt;dependencies&gt;</code></pre></div></div>
+<div class="paragraph"><p>vs</p></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+    implementation project(':awesome-lib')
+}</code></pre></div></div></section></section>
+<section><section id="here-come-composite-builds"><h2>Here come composite builds!</h2></section><section id="binary-vs-source"><h2>Binary vs source</h2><div class="ulist"><ul><li><p>Properly separate binaries from sources</p></li><li><p>Binaries are published</p></li><li><p>Published = released</p></li></ul></div></section><section id="simple-idea"><h2>Simple idea</h2><div class="ulist"><ul><li><p>Integration through binaries or sources</p></li><li><p>On demand</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">rootProject.name = 'my-app'
+includeBuild '../my-lib'</code></pre></div></div></section><section id="substitute-a-binary-dependency-with-source"><h2>Substitute a binary dependency with source</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   implementation 'com.acme.awesome-lib:1.1' // binary dependency
+}</code></pre></div></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code>includeBuild '../my-lib' // replaces the binary dependency</code></pre></div></div></section></section>
+<section id="demo-basic-example"><h2>Demo : Basic example</h2></section>
+<section id="demo-multirepo"><h2>Demo : multirepo</h2></section>
+<section id="demo-plugin-development"><h2>Demo : Plugin development</h2></section>
+<section id="how-does-it-work"><h2>How does it work?</h2><div class="ulist"><ul><li><p>Built upon <em>dependency substitution</em></p></li><li><p>Replaces any dependency with the included build</p></li><li><p>Participates in the dependency graph</p></li></ul></div></section>
+<section><section id="build-cache"><h2>Build cache</h2></section><section id="the-gradle-build-cache"><h2>The Gradle build cache</h2><div class="ulist"><ul><li><p>Released with Gradle 3.5</p></li><li><p>Caches outputs of tasks</p><div class="ulist"><ul><li><p>local cache</p></li><li><p>remote cache</p></li><li><p>cache backend provided with Gradle Enterprise</p></li></ul></div></li></ul></div></section><section id="the-gradle-build-cache-demo"><h2>The Gradle build cache demo</h2></section></section>
+<section><section id="ci-integration"><h2>CI Integration</h2></section><section id="snapshots-and-ci"><h2>Snapshots and CI</h2><div class="ulist"><ul><li><p>Can setup composite builds on CI</p><div class="ulist"><ul><li><p>allows discovering breakages early</p></li></ul></div></li><li><p>Enable build cache!</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">ext.isCiServer = System.getenv().containsKey("CI")
+
+buildCache {
+    local {
+        enabled = !isCiServer
+    }
+    remote(HttpBuildCache) {
+        url = 'https://example.com:8123/build-cache/'
+        push = isCiServer
+    }
+}</code></pre></div></div></section></section>
+<section id="limitations-of-composite-builds"><h2>Limitations of composite builds</h2><div class="ulist"><ul><li><p>No nested composites (coming soon!)</p></li><li><p>Cannot access tasks from included builds from CLI (coming soon!)</p></li><li><p>Cannot substitute with custom publication</p></li><li><p>Continuous builds won&#8217;t detect changes to included builds</p></li><li><p>No build scans (coming soon!)</p></li></ul></div></section>
+<section><section id="conclusion"><h2>Conclusion</h2></section><section id="are-snapshots-dead"><h2>Are snapshots dead?</h2><div class="ulist"><ul><li><p>Not yet</p><div class="ulist"><ul><li><p>Still useful for development version number</p></li><li><p>Can still be pushed to remote repositories</p></li></ul></div></li><li><p>But we should use timestamped versions</p><div class="ulist"><ul><li><p>For reproducible builds</p></li></ul></div></li><li><p>Composites remove almost all cons of snapshots</p></li></ul></div></section></section>
+<section id="thank-you"><h2>Thank you!</h2><div class="ulist"><ul><li><p>Slides and code : <a href="https://github.com/melix/rivieradev-composite-builds" class="bare">https://github.com/melix/rivieradev-composite-builds</a></p></li><li><p>Gradle documentation : <a href="http://gradle.org/documentation/" class="bare">http://gradle.org/documentation/</a></p></li><li><p>Follow me: <a href="http://twitter.com/CedricChampeau">@CedricChampeau</a></p></li></ul></div>
+<div class="paragraph"><p>Learn more at <a href="https://gradle.org">www.gradle.org</a></p></div></section></div></div><script src="reveal.js/lib/js/head.min.js"></script><script src="reveal.js/js/reveal.js"></script><script>// See https://github.com/hakimel/reveal.js#configuration for a full list of configuration options
+Reveal.initialize({
+  // Display controls in the bottom right corner
+  controls: true,
+  // Display a presentation progress bar
+  progress: true,
+  // Display the page number of the current slide
+  slideNumber: true,
+  // Push each slide change to the browser history
+  history: true,
+  // Enable keyboard shortcuts for navigation
+  keyboard: true,
+  // Enable the slide overview mode
+  overview: true,
+  // Vertical centering of slides
+  center: true,
+  // Enables touch navigation on devices with touch input
+  touch: true,
+  // Loop the presentation
+  loop: false,
+  // Change the presentation direction to be RTL
+  rtl: false,
+  // Turns fragments on and off globally
+  fragments: true,
+  // Flags if the presentation is running in an embedded mode,
+  // i.e. contained within a limited portion of the screen
+  embedded: false,
+  // Number of milliseconds between automatically proceeding to the
+  // next slide, disabled when set to 0, this value can be overwritten
+  // by using a data-autoslide attribute on your slides
+  autoSlide: 0,
+  // Stop auto-sliding after user input
+  autoSlideStoppable: true,
+  // Enable slide navigation via mouse wheel
+  mouseWheel: false,
+  // Hides the address bar on mobile devices
+  hideAddressBar: true,
+  // Opens links in an iframe preview overlay
+  previewLinks: false,
+  // Theme (e.g., beige, black, league, night, serif, simple, sky, solarized, white)
+  // NOTE setting the theme in the config no longer works in reveal.js 3.x
+  //theme: Reveal.getQueryHash().theme || 'beige',
+  // Transition style (e.g., none, fade, slide, convex, concave, zoom)
+  transition: Reveal.getQueryHash().transition || 'linear',
+  // Transition speed (e.g., default, fast, slow)
+  transitionSpeed: 'default',
+  // Transition style for full page slide backgrounds (e.g., none, fade, slide, convex, concave, zoom)
+  backgroundTransition: 'fade',
+  // Number of slides away from the current that are visible
+  viewDistance: 3,
+  // Parallax background image (e.g., "'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg'")
+  parallaxBackgroundImage: '',
+  // Parallax background size in CSS syntax (e.g., "2100px 900px")
+  parallaxBackgroundSize: '',
+
+  // The "normal" size of the presentation, aspect ratio will be preserved
+  // when the presentation is scaled to fit different resolutions. Can be
+  // specified using percentage units.
+  width: 960,
+  height: 700,
+
+  // Factor of the display size that should remain empty around the content
+  margin: 0.1,
+
+  // Bounds for smallest/largest possible scale to apply to content
+  minScale: 0.2,
+  maxScale: 1.5,
+
+  // Optional libraries used to extend on reveal.js
+  dependencies: [
+      { src: 'reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+      { src: 'reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+      { src: 'reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+      { src: 'reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+  ]
+});</script><div id="footer">
+  <div style="width:100%">
+     <div style="display:inline">Composite builds - @CedricChampeau</div>
+     <div style="display:inline; position:absolute; right: 50px;"><img src="images/gradle-logo-min.png"></div>
+  </div>
+</div></body></html>
