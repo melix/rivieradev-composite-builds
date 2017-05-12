@@ -1,0 +1,275 @@
+= Composite builds: death to snapshots!
+Cédric Champeau (@CedricChampeau), Gradle
+2017-02-28
+:revnumber: {project-version}
+:example-caption!:
+ifndef::imagesdir[:imagesdir: images]
+ifndef::sourcedir[:sourcedir: ../java]
+:deckjs_transition: fade
+:navigation:
+:menu:
+:status:
+:adoctor: http://asciidoctor.org/[Asciidoctor]
+:gradle: http://gradle.org[Gradle]
+
+== Who am I
+
+image::nantes.jpg[background, size=cover]
+
+++++
+<style>
+.asciinema-terminal.font-medium {
+  font-size: 16px;
+}
+</style>
+++++
+
+
+[source,groovy]
+----
+speaker {
+    name 'Cédric Champeau'
+    company 'Gradle Inc'
+    oss 'Apache Groovy committer',
+    successes 'Static type checker',
+              'Static compilation',
+              'Traits',
+              'Markup template engine',
+              'DSLs'
+        failures Stream.of(bugs),
+        twitter '@CedricChampeau',
+        github 'melix',
+        extraDescription '''Groovy in Action 2 co-author
+Misc OSS contribs (Gradle plugins, deck2pdf, jlangdetect, ...)'''
+}
+----
+
+== Snapshots
+
+=== Once upon a time...
+
+* Monolithic apps
+* CVS, Perforce, ...
+* Ant
+
+=== Modularization
+
+* Dependency management
+** Maven
+** Ivy
+* Multi-project builds
+
+== Monorepo vs multirepo
+
+=== Monorepo pros
+
+* All sources in single place
+* Single lifecycle (sometimes a con)
+* Easy refactorings
+* Catch breaking changes early
+
+=== Monorepo cons
+
+* Build performance
+** Configuration time for projects you don't need
+** Build time for projects you don't need
+* IDE integration
+* `TooMuchCodeException`
+
+=== Multirepo pros
+
+* Focused
+* Stronger encapsulation
+* Clean component boundaries
+* Independent lifecycle (sometimes a con)
+* Build performance
+
+=== Multirepo cons
+
+* Requires integration
+** Consumers need a way to get latest version
+** Always needs to be published
+* Breakages caught late
+
+=== So here come snapshots!
+
+* Multi-repo approach
+* Allows consumer to consume _unreleased_ versions
+* Problem solved!
+
+(is it?)
+
+== Why snapshots are evil
+
+=== What's wrong with this?
+
+```
+dependencies {
+   implementation 'com.acme:awesome-lib:1+'
+}
+```
+
+=== Or this?
+
+```
+mavenLocal() // evil!
+```
+
+=== Or this?
+
+```
+dependencies {
+    // Everytime someone publishes a snapshot, a kitten dies
+    implementation 'com.acme:awesome-lib:1.2-SNAPSHOT'
+}
+```
+
+=== Builds should be reproducible
+
+* Anybody, anytime, should be able to:
+** Produce the same output for the same input
+** Share the results in a repository-agnostic way (build cache)
+* Snapshots are worse than dynamic versions
+** Same version number, different artifacts
+* No traceability
+** At best, a timestamp if it's published
+** At worse, no clue (`mavenLocal()`)
+
+=== Snapshots and dynamic versions are performance killers
+
+* Periodically look into repositories
+* Cache policy (reproducible?)
+* Maven: a snapshot can change _during_ a build
+** No proper resolution of sub-module artifacts (identified by _version_)
+** Cache timeout
+
+=== Maven vs Gradle
+
+[source,xml]
+----
+<dependencies>
+   <dependency>
+       <groupId>com.acme</groupId>
+       <artifactId>awesome-lib</groupId>
+       <version>1.2-SNAPSHOT</version>
+   </dependency>
+<dependencies>
+----
+
+vs
+
+[source,groovy]
+----
+dependencies {
+    implementation project(':awesome-lib')
+}
+----
+
+== Here come composite builds!
+
+=== Binary vs source
+
+* Properly separate binaries from sources
+* Binaries are published
+* Published = released
+
+=== Simple idea
+
+* Integration through binaries or sources
+* On demand
+
+[source,groovy]
+----
+rootProject.name = 'my-app'
+includeBuild '../my-lib'
+----
+
+=== Substitute a binary dependency with source
+
+[source,groovy]
+----
+dependencies {
+   implementation 'com.acme.awesome-lib:1.1' // binary dependency
+}
+----
+
+```
+includeBuild '../my-lib' // replaces the binary dependency
+```
+
+== Demo : Basic example
+
+== Demo : multirepo
+
+== Demo : Plugin development
+
+== How does it work?
+
+* Built upon _dependency substitution_
+* Replaces any dependency with the included build
+* Participates in the dependency graph
+
+== Build cache
+
+=== The Gradle build cache
+
+* Released with Gradle 3.5
+* Caches outputs of tasks
+** local cache
+** remote cache
+** cache backend provided with Gradle Enterprise
+
+=== The Gradle build cache demo
+
+== CI Integration
+
+=== Snapshots and CI
+
+* Can setup composite builds on CI
+** allows discovering breakages early
+* Enable build cache!
+
+[source,groovy]
+----
+ext.isCiServer = System.getenv().containsKey("CI")
+
+buildCache {
+    local {
+        enabled = !isCiServer
+    }
+    remote(HttpBuildCache) {
+        url = 'https://example.com:8123/build-cache/'
+        push = isCiServer
+    }
+}
+----
+
+== Limitations of composite builds
+
+* No nested composites (coming soon!)
+* Cannot access tasks from included builds from CLI (coming soon!)
+* Cannot substitute with custom publication
+* Continuous builds won't detect changes to included builds
+* No build scans (coming soon!)
+
+
+== Conclusion
+
+=== Are snapshots dead?
+
+* Not yet
+** Still useful for development version number
+** Can still be pushed to remote repositories
+* But we should use timestamped versions
+** For reproducible builds
+* Composites remove almost all cons of snapshots
+
+== Thank you!
+
+* Slides and code : https://github.com/melix/rivieradev-composite-builds
+* Gradle documentation : http://gradle.org/documentation/
+* Follow me: http://twitter.com/CedricChampeau[@CedricChampeau]
+
+Learn more at https://gradle.org[www.gradle.org]
+
+
